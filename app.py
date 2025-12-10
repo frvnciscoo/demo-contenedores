@@ -13,7 +13,7 @@ def analizar_imagen(image_pil):
     image_pil.save(buffer, format="JPEG")
     img_bytes = buffer.getvalue()
 
-    # Convertir a base64 (OBLIGATORIO en /responses)
+    # Convertir a Base64
     img_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
     prompt = """
@@ -35,11 +35,14 @@ def analizar_imagen(image_pil):
             {
                 "role": "user",
                 "content": [
-                    {"type": "input_text", "text": prompt},
+                    {
+                        "type": "input_text",
+                        "text": prompt
+                    },
                     {
                         "type": "input_image",
                         "image": {
-                            "data": img_b64,   # BASE64 STRING !!!
+                            "data": img_b64,
                             "media_type": "image/jpeg"
                         }
                     }
@@ -70,4 +73,3 @@ if imagen:
         except Exception as e:
             st.error(f"Error leyendo JSON: {e}")
             st.code(texto)
-
