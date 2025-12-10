@@ -9,24 +9,26 @@ GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
 
 def analizar_imagen(image):
-    model = genai.GenerativeModel("gemini-1.5-flash")  # Modelo actual
-    
-    prompt = """
-    Actúa como un sistema OCR experto en logística. Analiza la imagen del contenedor.
-    Extrae estrictamente en formato JSON los siguientes campos:
-    - sigla (ej: TRHU)
-    - numero (ej: 496448)
-    - dv (dígito verificador, ej: 9)
-    - max_gross_kg (solo el numero)
-    - max_gross_lb (solo el numero)
-    - tara_kg (solo el numero)
-    - tara_lb (solo el numero)
+    model = genai.GenerativeModel("gemini-1.5-flash")
 
-    Si un valor no es legible, pon null. No des explicaciones, solo el JSON.
+    # Convertir imagen Streamlit → archivo temporal
+    img_path = "/tmp/captura.jpg"
+    image.save(img_path)
+
+    # Subir imagen a Google (obligatorio para 1.5+ con visión)
+    uploaded = genai.upload_file(img_path)
+
+    prompt = """
+    Actúa como un sistema OCR experto en logística...
     """
 
-    response = model.generate_content([prompt, image])
+    response = model.generate_content(
+        [prompt, uploaded],
+        stream=False
+    )
+
     return response.text
+
 
 
 # --- INTERFAZ DEL PMV (Streamlit) ---
@@ -76,6 +78,7 @@ if imagen_capturada:
         except Exception as e:
 
             st.error(f"Error en la lectura: {e}")
+
 
 
 
