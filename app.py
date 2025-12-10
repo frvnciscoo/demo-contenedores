@@ -9,7 +9,7 @@ GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
 
 def analizar_imagen(image):
-    model = genai.GenerativeModel('gemini-1.5-flash') # Modelo rápido y barato
+    model = genai.GenerativeModel('gemini-pro-vision') # Modelo rápido y barato
     
     prompt = """
     Actúa como un sistema OCR experto en logística. Analiza la imagen del contenedor.
@@ -75,5 +75,6 @@ if imagen_capturada:
         except Exception as e:
 
             st.error(f"Error en la lectura: {e}")
+
 
 
