@@ -5,8 +5,6 @@ from PIL import Image
 import io
 import json
 
-import inspect
-st.write("API version:", genai._client._api_version)
 
 
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -37,17 +35,8 @@ def analizar_imagen(image_pil):
     """
 
     # NUEVA forma correcta de enviar imágenes en 0.8.5
-    response = model.generate_content(
-        [
-            {"text": prompt},
-            {
-                "inline_data": {
-                    "mime_type": "image/jpeg",
-                    "data": image_bytes
-                }
-            }
-        ]
-    )
+    response = model.generate_content(prompt)
+    st.write(response.text)
 
     return response.text
 
@@ -76,5 +65,6 @@ if imagen_capturada:
 
         except Exception as e:
             st.error(f"Error: {e}")
+
 
 
