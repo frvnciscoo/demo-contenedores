@@ -5,7 +5,9 @@ from PIL import Image
 import io
 import json
 
-st.write("Versión SDK:", genai.__version__)
+import inspect
+st.write("SDK version:", genai.__version__)
+st.write("generate_content:", inspect.getsource(genai.GenerativeModel.generate_content))
 
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -74,3 +76,4 @@ if imagen_capturada:
 
         except Exception as e:
             st.error(f"Error: {e}")
+
