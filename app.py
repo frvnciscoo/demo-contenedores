@@ -3,96 +3,98 @@ import google.generativeai as genai
 from PIL import Image
 import json
 
-# --- CONFIGURACIÓN DE PÁGINA ---
+# --- CONFIGURACIÓN ---
 st.set_page_config(page_title="Scanner Contenedores", page_icon="🚢")
+st.title("🚢 Scanner TRF - Auto Detect")
 
-# --- TÍTULO Y DEBUG ---
-st.title("🚢 Scanner TRF - Gemini IA")
-st.caption(f"Librería AI versión: {genai.__version__}") # Esto nos confirmará si se actualizó
-
-# --- CONFIGURACIÓN API KEY ---
+# 1. Configurar API Key
 try:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
 except Exception as e:
-    st.error("⚠️ Error: No se encontró la API Key en los 'Secrets' de Streamlit.")
+    st.error("⚠️ Falta la API Key en los Secrets.")
     st.stop()
 
-def procesar_imagen(image):
-    # Usamos el modelo más moderno y rápido
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
-    prompt = """
-    Eres un sistema experto en OCR de logística portuaria.
-    Analiza la imagen del contenedor y extrae los siguientes datos técnicos.
-    
-    Reglas:
-    1. Devuelve SOLAMENTE un objeto JSON válido.
-    2. No uses bloques de código (```json), solo el texto plano del JSON.
-    3. Si un dato no es visible, usa null.
-    
-    Formato JSON requerido:
-    {
-      "sigla": "Texto (ej: TRHU)",
-      "numero": "Texto (ej: 496448)",
-      "dv": "Texto (ej: 9)",
-      "max_gross_kg": Entero,
-      "max_gross_lb": Entero,
-      "tara_kg": Entero,
-      "tara_lb": Entero
-    }
-    """
-    
+# --- FUNCIÓN PARA ENCONTRAR MODELO DISPONIBLE ---
+def get_available_model():
+    """Busca qué modelo visual está disponible para esta API Key"""
     try:
-        response = model.generate_content([prompt, image])
-        return response.text
+        # Listamos todos los modelos que tu llave puede ver
+        available_models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                # Filtramos solo los modelos Gemini (excluimos los viejos PaLM)
+                if 'gemini' in m.name:
+                    available_models.append(m.name)
+        
+        # Prioridad: Intentar buscar Flash o Pro (versiones 1.5)
+        for model_name in available_models:
+            if '1.5-flash' in model_name:
+                return model_name
+        
+        for model_name in available_models:
+            if '1.5-pro' in model_name:
+                return model_name
+                
+        # Si no, devolver el primero que encuentre (ej: gemini-pro-vision)
+        if available_models:
+            return available_models[0]
+            
+        return None
     except Exception as e:
-        return f"Error API: {str(e)}"
+        st.error(f"Error al listar modelos: {e}")
+        return None
 
-# --- INTERFAZ PRINCIPAL ---
+# --- LÓGICA PRINCIPAL ---
 
-# 1. Captura
+# Detectar modelo automáticamente al cargar la app
+nombre_modelo = get_available_model()
+
+if nombre_modelo:
+    st.success(f"✅ Conectado usando modelo: **{nombre_modelo}**")
+else:
+    st.error("❌ No se encontraron modelos Gemini disponibles para tu Llave. Verifica tu API Key en Google AI Studio.")
+    st.stop()
+
+# Captura de imagen
 img_file_buffer = st.camera_input("📸 Capturar Contenedor")
 
 if img_file_buffer is not None:
-    # Mostrar imagen
     image = Image.open(img_file_buffer)
     
-    with st.spinner("🔄 Procesando con IA (Gemini 1.5)..."):
+    # Procesar
+    with st.spinner(f"Analizando con {nombre_modelo}..."):
         try:
-            # Llamada a la IA
-            resultado_raw = procesar_imagen(image)
+            model = genai.GenerativeModel(nombre_modelo)
             
-            # Limpieza de la respuesta (por si la IA pone comillas extrañas)
-            texto_limpio = resultado_raw.replace("```json", "").replace("```", "").strip()
+            prompt = """
+            Eres un sistema experto OCR. Analiza la imagen del contenedor.
+            Extrae en formato JSON estricto (sin ```json):
+            {
+              "sigla": "TRHU", "numero": "496448", "dv": "9",
+              "max_gross_kg": 0, "max_gross_lb": 0,
+              "tara_kg": 0, "tara_lb": 0
+            }
+            Si no lees algo, pon null.
+            """
             
-            # Convertir texto a Diccionario Python
+            response = model.generate_content([prompt, image])
+            texto_limpio = response.text.replace("```json", "").replace("```", "").strip()
             datos = json.loads(texto_limpio)
             
-            st.success("✅ Lectura Exitosa")
+            # Mostrar resultados
+            st.markdown("### Resultados Detectados")
+            col1, col2, col3 = st.columns(3)
+            col1.text_input("Sigla", value=datos.get("sigla"))
+            col2.text_input("Número", value=datos.get("numero"))
+            col3.text_input("DV", value=datos.get("dv"))
             
-            # 2. Formulario de Verificación
-            st.markdown("---")
-            st.subheader("📝 Verificar Datos")
-            
-            c1, c2, c3 = st.columns([1, 2, 1])
-            with c1: val_sigla = st.text_input("Sigla", datos.get("sigla", ""))
-            with c2: val_num = st.text_input("Número", datos.get("numero", ""))
-            with c3: val_dv = st.text_input("DV", datos.get("dv", ""))
-            
-            c4, c5 = st.columns(2)
-            with c4: val_tara_kg = st.text_input("Tara (Kg)", str(datos.get("tara_kg", "")))
-            with c5: val_mg_kg = st.text_input("Max Gross (Kg)", str(datos.get("max_gross_kg", "")))
+            col4, col5 = st.columns(2)
+            col4.text_input("Tara Kg", value=datos.get("tara_kg"))
+            col5.text_input("Max Gross Kg", value=datos.get("max_gross_kg"))
 
-            # 3. Botón de Acción
-            st.markdown("---")
-            if st.button("🚀 CONFIRMAR Y ENVIAR", type="primary"):
+            if st.button("Enviar"):
                 st.balloons()
-                st.info(f"Enviado al WMS: {val_sigla} {val_num}-{val_dv}")
                 
-        except json.JSONDecodeError:
-            st.error("Error al interpretar los datos de la IA.")
-            with st.expander("Ver respuesta cruda (Debug)"):
-                st.write(resultado_raw)
         except Exception as e:
-            st.error(f"Ocurrió un error inesperado: {e}")
+            st.error(f"Error procesando imagen: {e}")
