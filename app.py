@@ -3,13 +3,18 @@ from openai import OpenAI
 from PIL import Image
 import io
 import json
+import base64
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 def analizar_imagen(image_pil):
+    # Convertir a JPEG en memoria
     buffer = io.BytesIO()
     image_pil.save(buffer, format="JPEG")
     img_bytes = buffer.getvalue()
+
+    # Convertir a base64 (OBLIGATORIO en /responses)
+    img_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
     prompt = """
     Actúa como un sistema OCR experto en logística. Analiza la imagen del contenedor.
@@ -31,7 +36,13 @@ def analizar_imagen(image_pil):
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {"type": "input_image", "image": {"data": img_bytes}}
+                    {
+                        "type": "input_image",
+                        "image": {
+                            "data": img_b64,   # BASE64 STRING !!!
+                            "media_type": "image/jpeg"
+                        }
+                    }
                 ]
             }
         ]
@@ -43,20 +54,19 @@ def analizar_imagen(image_pil):
 st.title("📦 OCR Contenedores - IA")
 st.write("Captura el contenedor y extraemos los datos automáticamente.")
 
-imagen = st.camera_input("Tomar foto")
+imagen = st.camera_input("Tomar foto del contenedor")
 
 if imagen:
     img = Image.open(imagen)
 
-    with st.spinner("Procesando..."):
+    with st.spinner("Procesando imagen..."):
         texto = analizar_imagen(img)
 
         try:
-            texto = texto.strip().replace("```json", "").replace("```", "")
-            datos = json.loads(texto)
+            limpio = texto.strip().replace("```json", "").replace("```", "")
+            datos = json.loads(limpio)
             st.success("Datos detectados")
             st.json(datos)
         except Exception as e:
             st.error(f"Error leyendo JSON: {e}")
-            st.write("Respuesta del modelo:")
             st.code(texto)
