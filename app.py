@@ -9,7 +9,7 @@ GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
 
 def analizar_imagen(image):
-    model = genai.GenerativeModel('gemini-1.5-flash') # Modelo rápido y barato
+    model = genai.GenerativeModel("gemini-1.5-flash")  # Modelo actual
     
     prompt = """
     Actúa como un sistema OCR experto en logística. Analiza la imagen del contenedor.
@@ -21,12 +21,13 @@ def analizar_imagen(image):
     - max_gross_lb (solo el numero)
     - tara_kg (solo el numero)
     - tara_lb (solo el numero)
-    
+
     Si un valor no es legible, pon null. No des explicaciones, solo el JSON.
     """
-    
+
     response = model.generate_content([prompt, image])
     return response.text
+
 
 # --- INTERFAZ DEL PMV (Streamlit) ---
 st.title("📱 Demo Scanner Contenedores IA")
@@ -75,6 +76,7 @@ if imagen_capturada:
         except Exception as e:
 
             st.error(f"Error en la lectura: {e}")
+
 
 
 
