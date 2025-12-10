@@ -5,7 +5,7 @@ import json
 
 # --- CONFIGURACIÓN ---
 # Aquí va tu API Key de Google (se consigue gratis en aistudio.google.com para pruebas)
-GOOGLE_API_KEY = "AIzaSyD4LLVlTt43lKdfzu4GVsP1199gxwls_f4"
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
 
 def analizar_imagen(image):
@@ -73,4 +73,5 @@ if imagen_capturada:
                 # Aquí iría el código real para enviar a tu base de datos
                 
         except Exception as e:
+
             st.error(f"Error en la lectura: {e}")
