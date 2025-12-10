@@ -35,7 +35,7 @@ def analizar_imagen(image_pil):
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": prompt},
+                    {"type": "input_text", "text": prompt},
                     {
                         "type": "input_image",
                         "image": {
@@ -70,3 +70,4 @@ if imagen:
         except Exception as e:
             st.error(f"Error leyendo JSON: {e}")
             st.code(texto)
+
