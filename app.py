@@ -2,11 +2,13 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import json
+st.write("API usada:", genai._client._api_version)
+
 st.write("Versión SDK:", genai.__version__)
 # --- CONFIGURACIÓN ---
 # Aquí va tu API Key de Google (se consigue gratis en aistudio.google.com para pruebas)
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=GOOGLE_API_KEY)
+genai.configure(api_key=GOOGLE_API_KEY, api_version="v1")
 
 def analizar_imagen(image):
     model = genai.GenerativeModel("gemini-1.5-flash")
@@ -78,6 +80,7 @@ if imagen_capturada:
         except Exception as e:
 
             st.error(f"Error en la lectura: {e}")
+
 
 
 
