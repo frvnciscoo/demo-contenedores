@@ -2,7 +2,6 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import json
-st.write("API usada:", genai._client._api_version)
 
 st.write("Versión SDK:", genai.__version__)
 # --- CONFIGURACIÓN ---
@@ -80,6 +79,7 @@ if imagen_capturada:
         except Exception as e:
 
             st.error(f"Error en la lectura: {e}")
+
 
 
 
