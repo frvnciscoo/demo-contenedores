@@ -1,91 +1,62 @@
 import streamlit as st
 from openai import OpenAI
 from PIL import Image
-import base64
 import io
 import json
-import re
 
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# -----------------------
-# Función que encuentra JSON aunque esté mezclado
-# -----------------------
-def extraer_json_seguro(texto):
-    try:
-        # Buscar el primer bloque {...}
-        match = re.search(r"\{.*\}", texto, re.DOTALL)
-        if match:
-            return json.loads(match.group())
-        else:
-            raise ValueError("No se encontró JSON en la respuesta.")
-    except Exception as e:
-        raise ValueError(f"JSON inválido: {e}\nTexto recibido:\n{texto}")
-
-
 def analizar_imagen(image_pil):
-    # Convertir PIL → base64
     buffer = io.BytesIO()
     image_pil.save(buffer, format="JPEG")
-    base64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    img_bytes = buffer.getvalue()
 
     prompt = """
-    Extrae los siguientes datos del contenedor. SOLO devuelve un JSON sin texto adicional:
-    {
-      "sigla": "",
-      "numero": "",
-      "dv": "",
-      "max_gross_kg": "",
-      "max_gross_lb": "",
-      "tara_kg": "",
-      "tara_lb": ""
-    }
-    Si no se puede leer un valor, usa null.
-    NO escribas nada que no sea JSON.
+    Actúa como un sistema OCR experto en logística. Analiza la imagen del contenedor.
+    Extrae estrictamente en formato JSON los siguientes campos:
+    - sigla
+    - numero
+    - dv
+    - max_gross_kg
+    - max_gross_lb
+    - tara_kg
+    - tara_lb
+    Si un valor no es legible, usa null. Solo JSON.
     """
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini-vision",
-        messages=[
+    response = client.responses.create(
+        model="gpt-4o-mini",
+        input=[
             {
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {
-                        "type": "input_image",
-                        "image_url": f"data:image/jpeg;base64,{base64_image}"
-                    }
-                ],
+                    {"type": "input_image", "image": {"data": img_bytes}}
+                ]
             }
-        ],
-        max_tokens=200
+        ]
     )
 
-    return response.choices[0].message.content
+    return response.output_text
 
 
-# ----------------------------------------------------
-# STREAMLIT
-# ----------------------------------------------------
-st.title("📦 OCR Contenedores – OpenAI")
+st.title("📦 OCR Contenedores - IA")
+st.write("Captura el contenedor y extraemos los datos automáticamente.")
 
-imagen_capturada = st.camera_input("Tomar foto del contenedor")
+imagen = st.camera_input("Tomar foto")
 
-if imagen_capturada:
-    st.image(imagen_capturada)
+if imagen:
+    img = Image.open(imagen)
 
     with st.spinner("Procesando..."):
-        img = Image.open(imagen_capturada)
+        texto = analizar_imagen(img)
 
         try:
-            respuesta_bruta = analizar_imagen(img)
-
-            # Extraer JSON incluso si el modelo habló demás
-            datos = extraer_json_seguro(respuesta_bruta)
-
-            st.success("Datos extraídos del contenedor:")
+            texto = texto.strip().replace("```json", "").replace("```", "")
+            datos = json.loads(texto)
+            st.success("Datos detectados")
             st.json(datos)
-
         except Exception as e:
-            st.error(str(e))
-            st.write("Respuesta bruta del modelo:", respuesta_bruta)
+            st.error(f"Error leyendo JSON: {e}")
+            st.write("Respuesta del modelo:")
+            st.code(texto)
