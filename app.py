@@ -1,70 +1,74 @@
 import streamlit as st
-import google.generativeai as genai
-from google.generativeai.types import HarmCategory, HarmBlockThreshold
+from openai import OpenAI
 from PIL import Image
 import io
 import json
 
+# ==============================
+# CONFIG
+# ==============================
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-
-GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-genai.configure(api_key=GOOGLE_API_KEY)
-
-# ===============================
-# FUNCIÓN CORRECTA PARA GEMINI 1.5
-# ===============================
 def analizar_imagen(image_pil):
-    model = genai.GenerativeModel("gemini-1.5-flash")
-
-    # PIL -> JPEG bytes
+    # Convertimos la imagen a bytes
     buffer = io.BytesIO()
     image_pil.save(buffer, format="JPEG")
     image_bytes = buffer.getvalue()
 
     prompt = """
     Actúa como un sistema OCR experto en logística. Analiza la imagen del contenedor.
-    Extrae estrictamente en formato JSON los siguientes campos:
-    - sigla
-    - numero
-    - dv
-    - max_gross_kg
-    - max_gross_lb
-    - tara_kg
-    - tara_lb
-    Si un valor no es legible, usa null. Solo JSON.
+    Devuelve exclusivamente un JSON con los campos:
+    {
+      "sigla": "",
+      "numero": "",
+      "dv": "",
+      "max_gross_kg": "",
+      "max_gross_lb": "",
+      "tara_kg": "",
+      "tara_lb": ""
+    }
+
+    Si un valor no se lee, usa null.
+    No agregues texto fuera del JSON.
     """
 
-    # NUEVA forma correcta de enviar imágenes en 0.8.5
-    response = model.generate_content(prompt)
-    st.write(response.text)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini-vision",
+        messages=[
+            {"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image", "image": image_bytes}
+            ]}
+        ]
+    )
 
-    return response.text
+    return response.choices[0].message.content
 
 
-# ===============================
+# ==============================
 # STREAMLIT UI
-# ===============================
-st.title("📱 Demo Scanner Contenedores IA")
-st.write("Simulación de captura TRF")
+# ==============================
+st.title("📦 OCR Contenedores – OpenAI (Gratis)")
+st.write("Demo con modelo gpt-4o-mini-vision")
 
 imagen_capturada = st.camera_input("Tomar foto del contenedor")
 
 if imagen_capturada:
+
     st.image(imagen_capturada)
 
-    with st.spinner("Procesando..."):
+    with st.spinner("Analizando..."):
         try:
             img = Image.open(imagen_capturada)
-            resultado = analizar_imagen(img)
+            texto = analizar_imagen(img)
 
-            json_str = resultado.strip().replace("```json", "").replace("```", "")
+            # limpiar posibles ```json
+            json_str = texto.strip().replace("```json", "").replace("```", "")
             datos = json.loads(json_str)
 
-            st.success("Datos extraídos")
+            st.success("Datos extraídos correctamente")
             st.json(datos)
 
         except Exception as e:
-            st.error(f"Error: {e}")
-
-
-
+            st.error(f"Error leyendo JSON: {e}")
+            st.write("Respuesta recibida:", texto)
