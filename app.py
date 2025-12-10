@@ -8,12 +8,12 @@ import base64
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 def analizar_imagen(image_pil):
-    # Convertir a JPEG en memoria
+    # Convertir a JPEG
     buffer = io.BytesIO()
     image_pil.save(buffer, format="JPEG")
     img_bytes = buffer.getvalue()
 
-    # Convertir a Base64
+    # Base64
     img_b64 = base64.b64encode(img_bytes).decode("utf-8")
 
     prompt = """
@@ -41,9 +41,10 @@ def analizar_imagen(image_pil):
                     },
                     {
                         "type": "input_image",
-                        "image": {
-                            "data": img_b64,
-                            "media_type": "image/jpeg"
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/jpeg",
+                            "data": img_b64
                         }
                     }
                 ]
