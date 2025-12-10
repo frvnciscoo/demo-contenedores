@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import json
-
+st.write("Versión SDK:", genai.__version__)
 # --- CONFIGURACIÓN ---
 # Aquí va tu API Key de Google (se consigue gratis en aistudio.google.com para pruebas)
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -76,6 +76,7 @@ if imagen_capturada:
         except Exception as e:
 
             st.error(f"Error en la lectura: {e}")
+
 
 
 
