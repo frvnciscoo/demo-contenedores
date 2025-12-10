@@ -1,6 +1,7 @@
 streamlit
-openai>=1.40.2
+openai>=1.55.0
 
 pillow
+
 
 
