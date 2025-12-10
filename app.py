@@ -1,6 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 from PIL import Image
+import base64
 import io
 import json
 
@@ -10,14 +11,14 @@ import json
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 def analizar_imagen(image_pil):
-    # Convertimos la imagen a bytes
+    # Convertir imagen a base64
     buffer = io.BytesIO()
     image_pil.save(buffer, format="JPEG")
-    image_bytes = buffer.getvalue()
+    base64_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
     prompt = """
     Actúa como un sistema OCR experto en logística. Analiza la imagen del contenedor.
-    Devuelve exclusivamente un JSON con los campos:
+    Devuelve estrictamente un JSON con los campos:
     {
       "sigla": "",
       "numero": "",
@@ -27,19 +28,24 @@ def analizar_imagen(image_pil):
       "tara_kg": "",
       "tara_lb": ""
     }
-
-    Si un valor no se lee, usa null.
-    No agregues texto fuera del JSON.
+    No escribas nada fuera del JSON.
     """
 
     response = client.chat.completions.create(
         model="gpt-4o-mini-vision",
         messages=[
-            {"role": "user", "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image", "image": image_bytes}
-            ]}
-        ]
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:image/jpeg;base64,{base64_image}"
+                    }
+                ],
+            }
+        ],
+        max_tokens=300
     )
 
     return response.choices[0].message.content
@@ -54,7 +60,6 @@ st.write("Demo con modelo gpt-4o-mini-vision")
 imagen_capturada = st.camera_input("Tomar foto del contenedor")
 
 if imagen_capturada:
-
     st.image(imagen_capturada)
 
     with st.spinner("Analizando..."):
@@ -62,13 +67,13 @@ if imagen_capturada:
             img = Image.open(imagen_capturada)
             texto = analizar_imagen(img)
 
-            # limpiar posibles ```json
+            # limpiar ``json
             json_str = texto.strip().replace("```json", "").replace("```", "")
             datos = json.loads(json_str)
 
-            st.success("Datos extraídos correctamente")
+            st.success("Datos extraídos")
             st.json(datos)
 
         except Exception as e:
             st.error(f"Error leyendo JSON: {e}")
-            st.write("Respuesta recibida:", texto)
+            st.write("Respuesta cruda:", texto)
